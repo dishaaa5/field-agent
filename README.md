@@ -58,14 +58,14 @@ Auth            →   Google Service Account
 ```
 field-agent/
 ├── app/
-│   ├── page.tsx                      # Main UI — mic button + job display
+│   ├── page.tsx                      
 │   └── api/
-│       ├── transcribe/route.ts       # Groq Whisper — voice to text
-│       ├── extract/route.ts          # Groq Llama 3 — extract job details
-│       ├── save-job/route.ts         # Save job row to Google Sheets
-│       └── check-inventory/route.ts  # Check + update inventory sheet
-├── .env.local                        # API keys (not committed)
-├── service-account.json              # Google credentials (not committed)
+│       ├── transcribe/route.ts       
+│       ├── extract/route.ts          
+│       ├── save-job/route.ts         
+│       └── check-inventory/route.ts  
+├── .env.local                        
+├── service-account.json              
 └── package.json
 ```
 
@@ -174,21 +174,8 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## Roadmap
-
-- [ ] Sentiment analysis on job transcripts
-- [ ] RAG — ask questions about past job history
-- [ ] Anomaly detection on job times
-- [ ] Manager dashboard
-- [ ] Predictive inventory forecasting
-- [ ] Multi-technician support
-
----
 
 ## License
 
 MIT — free to use, modify, and build on.
 
----
-
-Built with [Groq](https://groq.com) · [Next.js](https://nextjs.org) · [Google Sheets API](https://developers.google.com/sheets/api)
