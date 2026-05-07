@@ -45,6 +45,7 @@ export default function Home() {
         setInventory(null);
         setJobData(null);
 
+        // Step 1 — transcribe
         setStatus("transcribing...");
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         const formData = new FormData();
@@ -55,42 +56,25 @@ export default function Home() {
         const text = transcribeData.transcript;
         setTranscript(text);
 
-        setStatus("understanding...");
-        const extractRes = await fetch("/api/extract", {
+        // Step 2 — agent decides everything
+        setStatus("agent thinking...");
+        const agentRes = await fetch("/api/agent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcript: text }),
         });
-        const extractData = await extractRes.json();
-        setJobData(extractData.data);
+        const agentData = await agentRes.json();
 
-        setStatus("saving to sheet...");
-        const saveRes = await fetch("/api/save-job", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jobData: extractData.data }),
-        });
-        const saveData = await saveRes.json();
-
-        if (!saveData.success) {
-          setStatus("error: " + saveData.error);
-          return;
+        // Pull results from agent tool calls
+        if (agentData.results?.extract_job_details?.data) {
+          setJobData(agentData.results.extract_job_details.data);
         }
-
-        if (extractData.data.parts_needed) {
-          setStatus("checking inventory...");
-          const invRes = await fetch("/api/check-inventory", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ partNumber: extractData.data.parts_needed.trim() }),
-          });
-          const invData = await invRes.json();
-          setInventory(invData);
+        if (agentData.results?.check_inventory) {
+          setInventory(agentData.results.check_inventory);
         }
 
         setStatus("done — tap to speak again");
       };
-
       mediaRecorder.start();
       mediaRecorderRef.current = mediaRecorder;
       setIsRecording(true);
