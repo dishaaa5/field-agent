@@ -18,12 +18,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Load embedding model ──────────────────────────────────────────────────────
+
 print("Loading embedding model...")
 model = SentenceTransformer("all-MiniLM-L6-v2")
 print("Model loaded!")
 
-# ── Google Sheets connection ──────────────────────────────────────────────────
+
 def get_sheet_data():
     creds = Credentials.from_service_account_file(
         r"C:\Users\Dell\OneDrive\Disha_AI\field agent\field-agent\service-account.json",
@@ -36,7 +36,7 @@ def get_sheet_data():
     rows = worksheet.get_all_records()
     return rows
 
-# ── FAISS index (in memory) ───────────────────────────────────────────────────
+
 index = None
 job_records = []
 
@@ -50,7 +50,7 @@ def build_index():
         print("No jobs found in sheet.")
         return
 
-    # Combine job fields into one searchable text per job
+    
     job_records = []
     texts = []
 
@@ -74,14 +74,14 @@ def build_index():
     print(f"Embedding {len(texts)} jobs...")
     embeddings = model.encode(texts, convert_to_numpy=True)
 
-    # Build FAISS index
+    
     dimension = embeddings.shape[1]
     index = faiss.IndexFlatL2(dimension)
     index.add(embeddings.astype(np.float32))
 
     print(f"FAISS index built with {index.ntotal} vectors.")
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+
 
 class QueryRequest(BaseModel):
     query: str
@@ -105,10 +105,10 @@ async def search(req: QueryRequest):
     if index is None or index.ntotal == 0:
         return {"results": [], "message": "No jobs indexed yet"}
 
-    # Embed the query
+    
     query_vector = model.encode([req.query], convert_to_numpy=True)
 
-    # Search FAISS
+    
     distances, indices = index.search(
         query_vector.astype(np.float32), req.top_k
     )
