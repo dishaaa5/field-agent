@@ -22,12 +22,27 @@ type InventoryResult = {
   message: string;
 };
 
+type SearchResult = {
+  score: number;
+  job: {
+    date: string;
+    job_done: string;
+    location: string;
+    time_taken: string;
+    parts_used: string;
+    parts_needed: string;
+  };
+};
+
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
   const [status, setStatus] = useState("tap to start recording");
   const [transcript, setTranscript] = useState("");
   const [jobData, setJobData] = useState<JobData | null>(null);
   const [inventory, setInventory] = useState<InventoryResult | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
@@ -44,6 +59,7 @@ export default function Home() {
       mediaRecorder.onstop = async () => {
         setInventory(null);
         setJobData(null);
+        setSearchResults([]);
 
         // Step 1 — transcribe
         setStatus("transcribing...");
@@ -75,6 +91,7 @@ export default function Home() {
 
         setStatus("done — tap to speak again");
       };
+
       mediaRecorder.start();
       mediaRecorderRef.current = mediaRecorder;
       setIsRecording(true);
@@ -95,6 +112,22 @@ export default function Home() {
     setStatus("processing...");
   };
 
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    setSearchResults([]);
+
+    const res = await fetch("/api/rag-search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: searchQuery }),
+    });
+
+    const data = await res.json();
+    setSearchResults(data.results || []);
+    setSearching(false);
+  };
+
   return (
     <main style={{
       fontFamily: "'Syne', sans-serif",
@@ -106,7 +139,6 @@ export default function Home() {
       alignItems: "center",
       paddingBottom: "60px",
     }}>
-      {/* Google Font */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
         * { box-sizing: border-box; }
@@ -134,6 +166,7 @@ export default function Home() {
         }
         .mic-btn:hover { transform: scale(1.03); }
         .mic-btn:active { transform: scale(0.97); }
+        .search-input:focus { border-color: #47B8FF !important; }
       `}</style>
 
       {/* Header */}
@@ -244,6 +277,118 @@ export default function Home() {
           )}
         </div>
       )}
+
+      {/* RAG Search divider */}
+      <div style={{ width:"100%", maxWidth:480, padding:"32px 24px 0", display:"flex", alignItems:"center", gap:12 }}>
+        <div style={{ flex:1, height:1, background:"#2A2A30" }} />
+        <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"#666672", letterSpacing:"0.1em", textTransform:"uppercase", whiteSpace:"nowrap" }}>Search past jobs</div>
+        <div style={{ flex:1, height:1, background:"#2A2A30" }} />
+      </div>
+
+      {/* RAG Search input */}
+      <div style={{ width:"calc(100% - 48px)", maxWidth:480, marginTop:16 }}>
+        <div style={{ display:"flex", gap:8 }}>
+          <input
+            className="search-input"
+            type="text"
+            placeholder="e.g. pump issue at Oak Street..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            style={{
+              flex:1,
+              background:"#111113",
+              border:"1px solid #2A2A30",
+              borderRadius:10,
+              padding:"12px 16px",
+              fontFamily:"'JetBrains Mono',monospace",
+              fontSize:12,
+              color:"#F0F0F0",
+              outline:"none",
+              transition:"border-color 0.2s",
+            }}
+          />
+          <button
+            onClick={handleSearch}
+            disabled={searching}
+            style={{
+              background: searching ? "#1A1A1E" : "#E8FF47",
+              border:"none",
+              borderRadius:10,
+              padding:"12px 18px",
+              fontFamily:"'JetBrains Mono',monospace",
+              fontSize:12,
+              fontWeight:600,
+              color: searching ? "#666" : "#0A0A0B",
+              cursor: searching ? "not-allowed" : "pointer",
+              transition:"all 0.2s",
+              whiteSpace:"nowrap",
+            }}
+          >
+            {searching ? "..." : "Ask AI"}
+          </button>
+        </div>
+        <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"#444", marginTop:6 }}>
+          semantic search — finds meaning, not just keywords
+        </div>
+      </div>
+
+      {/* Search Results */}
+      {searchResults.length > 0 && (
+        <div className="fade-up" style={{ width:"calc(100% - 48px)", maxWidth:480, marginTop:12, display:"flex", flexDirection:"column", gap:8 }}>
+          <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"#47B8FF", letterSpacing:"0.12em", textTransform:"uppercase" }}>
+            {searchResults.length} similar jobs found
+          </div>
+          {searchResults.map((r, i) => (
+            <div key={i} className="fade-up" style={{ background:"#111113", border:"1px solid #2A2A30", borderRadius:12, padding:"14px 16px", position:"relative", overflow:"hidden" }}>
+              <div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:"linear-gradient(90deg,#47B8FF,transparent)" }} />
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"#47B8FF" }}>
+                  Match #{i + 1}
+                </span>
+                <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"#444" }}>
+                  {r.job.date}
+                </span>
+              </div>
+              <div style={{ fontSize:13, fontWeight:600, color:"#F0F0F0", marginBottom:6 }}>
+                {r.job.job_done}
+              </div>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:10 }}>
+                {r.job.location && (
+                  <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"#666" }}>
+                    📍 {r.job.location}
+                  </span>
+                )}
+                {r.job.time_taken && (
+                  <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"#666" }}>
+                    ⏱ {r.job.time_taken}
+                  </span>
+                )}
+                {r.job.parts_used && (
+                  <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"#666" }}>
+                    🔩 {r.job.parts_used}
+                  </span>
+                )}
+                {r.job.parts_needed && (
+                  <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"#FF6B35" }}>
+                    📦 {r.job.parts_needed}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* No results */}
+      {searchResults.length === 0 && searchQuery && !searching && (
+        <div style={{ width:"calc(100% - 48px)", maxWidth:480, marginTop:12, padding:"14px 16px", background:"#111113", border:"1px solid #2A2A30", borderRadius:12 }}>
+          <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:11, color:"#444" }}>
+            No similar jobs found. Log more jobs to build your history.
+          </div>
+        </div>
+      )}
+
     </main>
   );
 }

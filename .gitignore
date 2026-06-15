@@ -13,3 +13,8 @@ service-account.json
 # misc
 .DS_Store
 *.pem
+
+# Python RAG server
+rag/venv/
+rag/__pycache__/
+*.pyc
